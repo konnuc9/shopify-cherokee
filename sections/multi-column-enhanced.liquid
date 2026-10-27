@@ -1,0 +1,403 @@
+<!-- section: multi-column-enhanced -->
+{%- liquid
+  assign s = section.settings
+
+  case s.heading_alignment
+    when 'center'
+      assign heading_align_class = 'text-center'
+    when 'right'
+      assign heading_align_class = 'text-right'
+    else
+      assign heading_align_class = 'text-left'
+  endcase
+-%}
+
+<section class="color-{{ s.color_scheme }} py-lg">
+  <div class="container">
+
+    {%- if s.heading != blank -%}
+      <div
+        role="heading"
+        aria-level="2"
+        class="fs-display-2 mb-8 lg:mb-12 {{ heading_align_class }}">
+        {{- s.heading | escape -}}
+      </div>
+    {%- endif -%}
+
+    {%- if section.blocks.size > 0 -%}
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {%- for block in section.blocks -%}
+          {%- liquid
+            assign b = block.settings
+
+            assign has_video = false
+            if b.video.sources != blank
+              assign has_video = true
+            endif
+
+            assign has_image = false
+            if b.image != blank
+              assign has_image = true
+            endif
+
+            assign poster = b.image | default: b.video.preview_image
+
+            case b.title_alignment
+              when 'center'
+                assign title_align_class = 'text-center'
+              when 'right'
+                assign title_align_class = 'text-right'
+              else
+                assign title_align_class = 'text-left'
+            endcase
+
+            case b.text_alignment
+              when 'center'
+                assign text_align_class = 'text-center'
+              when 'right'
+                assign text_align_class = 'text-right'
+              else
+                assign text_align_class = 'text-left'
+            endcase
+
+            case b.button_alignment
+              when 'center'
+                assign button_align_class = 'justify-center'
+              when 'right'
+                assign button_align_class = 'justify-end'
+              else
+                assign button_align_class = 'justify-start'
+            endcase
+
+            assign has_button = false
+            if b.button_label != blank and b.button_link != blank
+              assign has_button = true
+            endif
+
+            assign title_above = false
+            if b.title != blank and b.title_position == 'above'
+              assign title_above = true
+            endif
+            assign title_below = false
+            if b.title != blank and b.title_position != 'above'
+              assign title_below = true
+            endif
+
+            assign text_above = false
+            if b.text != blank and b.text_position == 'above'
+              assign text_above = true
+            endif
+            assign text_below = false
+            if b.text != blank and b.text_position != 'above'
+              assign text_below = true
+            endif
+
+            assign has_content_above = false
+            if title_above or text_above
+              assign has_content_above = true
+            endif
+            assign has_content_below = false
+            if title_below or text_below
+              assign has_content_below = true
+            endif
+
+            # CTA is placed relative to the column header/text: "above" sits
+            # before the first text element, "below" sits after the last one.
+            assign button_above_top = false
+            assign button_above_bottom = false
+            assign button_below_top = false
+            assign button_below_bottom = false
+            if has_button
+              if b.button_position == 'above'
+                if has_content_above
+                  assign button_above_top = true
+                else
+                  assign button_below_top = true
+                endif
+              else
+                if has_content_below
+                  assign button_below_bottom = true
+                elsif has_content_above
+                  assign button_above_bottom = true
+                else
+                  assign button_below_bottom = true
+                endif
+              endif
+            endif
+          -%}
+
+          {%- capture title_html -%}
+            <div
+              role="heading"
+              aria-level="3"
+              class="fs-display-5 text-base {{ title_align_class }}">
+                {{- b.title | escape -}}
+            </div>
+          {%- endcapture -%}
+
+          {%- capture text_html -%}
+            <div class="rte {{ text_align_class }}">{{- b.text -}}</div>
+          {%- endcapture -%}
+
+          {%- capture button_html -%}
+            <div class="flex {{ button_align_class }}">
+              <a class="{{ b.button_style }} text-center" href="{{ b.button_link }}">
+                {{- b.button_label | escape -}}
+              </a>
+            </div>
+          {%- endcapture -%}
+
+          <div class="pb-4 flex flex-col" {{ block.shopify_attributes }}>
+
+            {%- if has_content_above or button_above_top or button_above_bottom -%}
+              <div class="flex flex-col gap-4 mb-5">
+                {%- if button_above_top -%}{{ button_html }}{%- endif -%}
+                {%- if title_above -%}{{ title_html }}{%- endif -%}
+                {%- if text_above -%}{{ text_html }}{%- endif -%}
+                {%- if button_above_bottom -%}{{ button_html }}{%- endif -%}
+              </div>
+            {%- endif -%}
+
+            {%- if has_video or has_image -%}
+              {%- if b.media_link != blank -%}
+                <a
+                  href="{{ b.media_link }}"
+                  class="block"
+                  {% if b.title != blank %}aria-label="{{ b.title | escape }}"{% endif %}>
+              {%- endif -%}
+
+              {%- if has_video -%}
+                <div class="overflow-hidden rounded-theme aspect-[4/3]">
+                  {%- for source in b.video.sources -%}
+                    {%- if source.url contains 'mp4' -%}
+                      <video
+                        class="w-full h-full object-cover"
+                        autoplay
+                        playsinline
+                        muted
+                        loop
+                        preload="none"
+                        poster="{{ poster | image_url: width: 960 }}"
+                        type="video/mp4"
+                        src="{{ source.url }}"></video>
+                      {%- break -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                </div>
+              {%- else -%}
+                <div class="overflow-hidden rounded-theme aspect-[4/3]">
+                  {%- capture content -%}
+                    {{- b.image | image_url: width: 960 | image_tag:
+                      class: 'w-full h-full object-cover',
+                      loading: 'lazy',
+                      sizes: '(min-width: 1024px) 33vw, 100vw',
+                      widths: '300, 450, 600, 750, 960'
+                    -}}
+                  {%- endcapture -%}
+                  {%- render 'media-loader', content: content, show_skeleton: true -%}
+                </div>
+              {%- endif -%}
+
+              {%- if b.media_link != blank -%}
+                </a>
+              {%- endif -%}
+            {%- endif -%}
+
+            {%- if has_content_below or button_below_top or button_below_bottom -%}
+              <div class="flex flex-col gap-4 mt-5">
+                {%- if button_below_top -%}{{ button_html }}{%- endif -%}
+                {%- if title_below -%}{{ title_html }}{%- endif -%}
+                {%- if text_below -%}{{ text_html }}{%- endif -%}
+                {%- if button_below_bottom -%}{{ button_html }}{%- endif -%}
+              </div>
+            {%- endif -%}
+
+          </div>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Multi Column Enhanced",
+  "settings": [
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "Color scheme"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Multi Column"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "Heading alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "column",
+      "name": "Column",
+      "settings": [
+        {
+          "type": "header",
+          "content": "Media"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "video",
+          "id": "video",
+          "label": "Video",
+          "info": "Plays muted with autoplay and loop. Takes priority over image when set."
+        },
+        {
+          "type": "url",
+          "id": "media_link",
+          "label": "Image/video link",
+          "info": "Makes the image or video clickable."
+        },
+        {
+          "type": "header",
+          "content": "Heading"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading",
+          "default": "Column"
+        },
+        {
+          "type": "select",
+          "id": "title_alignment",
+          "label": "Heading alignment",
+          "options": [
+            { "value": "left", "label": "Left" },
+            { "value": "center", "label": "Center" },
+            { "value": "right", "label": "Right" }
+          ],
+          "default": "left"
+        },
+        {
+          "type": "select",
+          "id": "title_position",
+          "label": "Heading position",
+          "options": [
+            { "value": "above", "label": "Above image" },
+            { "value": "below", "label": "Below image" }
+          ],
+          "default": "below"
+        },
+        {
+          "type": "header",
+          "content": "Description"
+        },
+        {
+          "type": "richtext",
+          "id": "text",
+          "label": "Description",
+          "default": "<p>Pair text with an image to focus on your chosen product, collection, or blog post.</p>"
+        },
+        {
+          "type": "select",
+          "id": "text_alignment",
+          "label": "Description alignment",
+          "options": [
+            { "value": "left", "label": "Left" },
+            { "value": "center", "label": "Center" },
+            { "value": "right", "label": "Right" }
+          ],
+          "default": "left"
+        },
+        {
+          "type": "select",
+          "id": "text_position",
+          "label": "Description position",
+          "options": [
+            { "value": "above", "label": "Above image" },
+            { "value": "below", "label": "Below image" }
+          ],
+          "default": "below"
+        },
+        {
+          "type": "header",
+          "content": "Button"
+        },
+        {
+          "type": "text",
+          "id": "button_label",
+          "label": "Button text"
+        },
+        {
+          "type": "url",
+          "id": "button_link",
+          "label": "Button link"
+        },
+        {
+          "type": "select",
+          "id": "button_style",
+          "label": "Button style",
+          "options": [
+            { "value": "button", "label": "Primary" },
+            { "value": "button button-secondary", "label": "Secondary" },
+            { "value": "button button-outline-black", "label": "Outline black" },
+            { "value": "button button-outline-white", "label": "Outline white" }
+          ],
+          "default": "button"
+        },
+        {
+          "type": "select",
+          "id": "button_position",
+          "label": "Button position",
+          "options": [
+            { "value": "above", "label": "Above heading/description" },
+            { "value": "below", "label": "Below heading/description" }
+          ],
+          "default": "below"
+        },
+        {
+          "type": "select",
+          "id": "button_alignment",
+          "label": "Button alignment",
+          "options": [
+            { "value": "left", "label": "Left" },
+            { "value": "center", "label": "Center" },
+            { "value": "right", "label": "Right" }
+          ],
+          "default": "left"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 3,
+  "presets": [
+    {
+      "name": "Multi Column Enhanced",
+      "category": "Media & Content",
+      "blocks": [
+        { "type": "column" },
+        { "type": "column" },
+        { "type": "column" }
+      ]
+    }
+  ],
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  }
+}
+{% endschema %}
